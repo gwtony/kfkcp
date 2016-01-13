@@ -9,11 +9,12 @@ import (
 
 type KafkaClient struct {
 	addr		string
-	//zkaddr		string
-	//zkport		string
 	log			*Log
 	producer	sarama.SyncProducer
 	consumer	sarama.Consumer
+
+	/* TODO: should use interface */
+	s			*Server
 }
 
 func InitKafka(addr string, flag bool, log *Log) (*KafkaClient, error) {
@@ -106,6 +107,8 @@ func (k *KafkaClient) recvMsg(topic string, offset int64) error {
 
     msgCount := 0
 
+	dep := InitDeploy(k.s.sc, k.log)
+
 	for {
 	    select {
 	    case err := <-consumer.Errors():
@@ -114,8 +117,10 @@ func (k *KafkaClient) recvMsg(topic string, offset int64) error {
 	        msgCount++
 			k.log.Debug("msg count is %d", msgCount)
 			k.log.Debug("Msg is [%s], Offset is %d", string(msg.Value), msg.Offset)
-			RunDeployer(msg.Value)
-			k.saveOffset(offset)
+
+			dep.RunDeploy(msg.Value)
+
+			k.saveOffset(msg.Offset)
 	    }
 	}
 
@@ -135,4 +140,9 @@ func (k *KafkaClient) getTopics() ([]string, error) {
 	k.log.Debug(topics)
 
 	return topics, nil
+}
+
+//TODO:
+func (k *KafkaClient) saveOffset(offset int64) error {
+	return nil
 }

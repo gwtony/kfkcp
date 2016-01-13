@@ -17,6 +17,8 @@ type Server struct {
 	log		*Log
 	kafka	*KafkaClient
 	topic	string
+
+	sc		*SshContext
 }
 
 func (s *Server) pubMsg(w http.ResponseWriter, req *http.Request) {
@@ -58,11 +60,14 @@ func InitServer(conf *Config, log *Log) (*Server, error) {
 	s.skey  = conf.skey
 	s.sto	= conf.sto
 
+	s.sc = InitSshContext(s.skey, s.user, s.to, log)
+
 	kafka, err := InitKafka(s.kaddr, false, s.log)
 	if err != nil {
 		s.log.Error("init kafka client faild")
 		return nil, err
 	}
+	kafka.s = s
 	s.kafka = kafka
 
 	return s, nil
