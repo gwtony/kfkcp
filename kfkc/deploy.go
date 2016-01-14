@@ -120,7 +120,15 @@ func (d *Deploy) RunDeploy(msg []byte) error {
 			res, err := sconn.SshExec("md5sum " + plain.Dir + "/" + plain.File)
 			if err != nil {
 				d.log.Error("Execute md5sum %s in %s failed", plain.File, ip)
-				d.reportResult(plain, ip, "md5sum failed")
+				d.reportResult(plain, ip, "Md5sum failed")
+				return
+			}
+
+			//TODO: check md5
+			tmp := strings.Fields(res)
+			if !strings.EqualFold(tmp[0], plain.Md5) {
+				d.log.Error("Check md5 failed")
+				d.reportResult(plain, ip, "Check md5 failed")
 				return
 			}
 

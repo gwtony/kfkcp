@@ -74,7 +74,6 @@ func InitServer(conf *Config, log *Log) (*Server, error) {
 }
 
 func (s *Server) CoreRun() error {
-	//s.kafka.getTopics()
 	s.kafka.recvMsg("ssh", -1)
 	return nil
 }

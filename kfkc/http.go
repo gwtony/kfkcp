@@ -2,14 +2,19 @@ package kfkc
 
 import (
 	"fmt"
+	"errors"
 	"net/http"
+	"io/ioutil"
 )
 
 type HttpClient struct {
-	log		*Log
+	log	*Log
 }
 
-var template = "%s?flow_id=%s&sid=%s&cmd=%s&status=%s&time=%s&ip=%s"
+var HTTP_OK = 200
+
+var template = "%s?flow_id=%s&sid=%s&cmd=%s&status=%s&time=%s&ip=%s&content=%s"
+
 
 func InitHttpClient(log *Log) *HttpClient {
 	hc := &HttpClient{}
@@ -17,50 +22,54 @@ func InitHttpClient(log *Log) *HttpClient {
 	return hc
 }
 
-
-func (hc *HttpClient) Getfile() {
-    resp, err := http.Get("http://10.73.31.119:8001")
+func (hc *HttpClient) Getfile(uri string) ([]byte, error) {
+    resp, err := http.Get(uri)
     if err != nil {
-        fmt.Println(err)
-        return
-        // handle error
+		hc.log.Error("Http get %s failed", uri)
+        return nil, err
     }
 
     defer resp.Body.Close()
-    _, err = ioutil.ReadAll(resp.Body)
-    //body, err := ioutil.ReadAll(resp.Body)
+    body, err := ioutil.ReadAll(resp.Body)
     if err != nil {
-        fmt.Println(err)
+		hc.log.Error("Read body from response failed")
+		return nil, err
     }
 
-    //fmt.Println(string(body))
-    fmt.Println(resp.Header.Get("Content-Length"))
-
-}
-
-func (hc *HttpClient) Report(uri string, fid string, sid string, time string, ip string, msg string) {
-	if len(msg) {	/* error, status is 2 */
-		uri = fmt.Sprintf(template, uri, fid, sid, "cmd", "2", time, ip)
-	} else {		/* ok, status is 1 */
-		uri = fmt.Sprintf(template, uri, fid, sid, "cmd", "1", time, ip)
+    clen := resp.Header.Get("Content-Length")
+	if len(body) != clen {
+		hc.log.Error("Content length error")
+		return nil, errors.New("Content length error")
 	}
 
-	//TODO: http request
-    resp, err := http.Get("http://10.73.31.119:8001")
+	reurn body, nil
+}
+
+func (hc *HttpClient) Report(uri string, fid string, sid string, time string, ip string, msg string) error {
+	if len(msg) {	/* error, status is 2 */
+		uri = fmt.Sprintf(template, uri, fid, sid, "cmd", "2", time, ip, msg)
+	} else {		/* ok, status is 1 */
+		uri = fmt.Sprintf(template, uri, fid, sid, "cmd", "1", time, ip, msg)
+	}
+
+    resp, err := http.Get(uri)
     if err != nil {
-        fmt.Println(err)
-        return
-        // handle error
+		hc.log.Error("Report get uri %s failed", uri)
+        return err
     }
 
     defer resp.Body.Close()
-    _, err = ioutil.ReadAll(resp.Body)
-    //body, err := ioutil.ReadAll(resp.Body)
+
+    body, err := ioutil.ReadAll(resp.Body)
     if err != nil {
-        fmt.Println(err)
+		hc.log.Error("Report read body failed")
+        return err
     }
 
-    //fmt.Println(string(body))
-    fmt.Println(resp.Header.Get("Content-Length"))
+	if body.StatusCode != HTTP_OK {
+		hc.log.Error("http status error: %d", body.StatusCode)
+        return errors.New(body.Status)
+	}
 
+	return nil
 }
