@@ -107,7 +107,7 @@ func (k *KafkaClient) recvMsg(topic string, offset int64) error {
 
     msgCount := 0
 
-	dep := InitDeploy(k.s.sc, k.log)
+	deployer := InitDeploy(k.s.sc, k.log)
 
 	for {
 	    select {
@@ -118,7 +118,7 @@ func (k *KafkaClient) recvMsg(topic string, offset int64) error {
 			k.log.Debug("msg count is %d", msgCount)
 			k.log.Debug("Msg is [%s], Offset is %d", string(msg.Value), msg.Offset)
 
-			dep.RunDeploy(msg.Value)
+			deployer.RunDeploy(msg.Value)
 
 			k.saveOffset(msg.Offset)
 	    }

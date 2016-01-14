@@ -1,6 +1,7 @@
 package kfkc
 
 type Message struct {
+	/* orgin message struct */
 	Ips				[]string
 	Host			string
 	Flowid			int64
@@ -12,4 +13,8 @@ type Message struct {
 	Dir				string
 	Webfile			string
 	Rights			string
+
+	/* dealed message struct */
+	right			string
+	owner			string
 }

@@ -58,7 +58,7 @@ func InitSshContext(path string, user string, timeout time.Duration, log *Log) (
 	return sc, nil
 }
 
-func (sc *SshContext) initSshConn(addr string, log *Log) (*SshConn, error) {
+func (sc *SshContext) InitSshConn(addr string, log *Log) (*SshConn, error) {
 	sconn := &SshConn{}
 	sconn.addr = addr
 	err := sconn.sshConnect(sc, addr, log)
@@ -70,7 +70,7 @@ func (sc *SshContext) initSshConn(addr string, log *Log) (*SshConn, error) {
 	return sconn, nil
 }
 
-func (sconn *SshConn) sshConnect(sc *SshContext, addr string, log *Log) error {
+func (sconn *SshConn) SshConnect(sc *SshContext, addr string, log *Log) error {
 	conn, err := net.DialTimeout("tcp", addr, sc.timeout)
 	if err != nil {
 		log.Error("Create ssh connection to %s failed", addr)
@@ -88,7 +88,7 @@ func (sconn *SshConn) sshConnect(sc *SshContext, addr string, log *Log) error {
 	return nil
 }
 
-func (sconn *SshConn) sshExec(cmd string) ([]byte, error) {
+func (sconn *SshConn) SshExec(cmd string) ([]byte, error) {
 	session, err := sconn.client.NewSession()
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (sconn *SshConn) sshExec(cmd string) ([]byte, error) {
 	return session.CombinedOutput(cmd)
 }
 
-func (sconn *SshConn) sshScp(data []byte, file string, path string, right string) error {
+func (sconn *SshConn) SshScp(data []byte, file string, path string, right string) error {
 	session, err := sconn.client.NewSession()
 	if err != nil {
 		return err
@@ -134,6 +134,6 @@ func (sconn *SshConn) sshUnlock() {
 	sconn.lock.Unlock()
 }
 
-func (sconn *SshConn) sshClose() {
+func (sconn *SshConn) SshClose() {
 	(*sconn.conn).Close()
 }
