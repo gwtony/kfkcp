@@ -1,9 +1,6 @@
 package kfkc
 
 import (
-//	"os"
-//	"os/signal"
-	//"fmt"
 	"github.com/Shopify/sarama"
 )
 
@@ -120,7 +117,7 @@ func (k *KafkaClient) recvMsg(topic string, offset int64) error {
 
 			deployer.RunDeploy(msg.Value)
 
-			k.saveOffset(msg.Offset)
+			//TODO: save offset
 	    }
 	}
 

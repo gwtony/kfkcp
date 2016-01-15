@@ -1,7 +1,7 @@
 package kfkc
 
 import (
-	"string"
+	"strings"
 	//"fmt"
 )
 
@@ -13,7 +13,7 @@ type Deploy struct {
 	postscript	string
 
 	sc			*SshContext
-	hc			*HttpContext
+	hc			*HttpClient
 
 	format		*Format
 
@@ -63,6 +63,7 @@ func InitDeploy(sc *SshContext, log *Log) (*Deploy, error) {
 	d.sc = sc
 	d.log = log
 	d.format = InitFormat()
+	d.hc = InitHttpClient(d.log)
 
 	return d, nil
 }
@@ -95,9 +96,9 @@ func (d *Deploy) RunDeploy(msg []byte) error {
 		d.log.Debug("Deploy ip: %s", host)
 
 		go func(ip string) {
-			sconn := sc.InitSshConn(ip)
+			sconn := d.sc.InitSshConn(ip)
 
-			defer ch <- 1
+			defer func () { ch <- 1 }()
 			defer sconn.SshClose()
 
 			/* mkdir */
@@ -117,23 +118,23 @@ func (d *Deploy) RunDeploy(msg []byte) error {
 			}
 
 			/* md5sum */
-			res, err := sconn.SshExec("md5sum " + plain.Dir + "/" + plain.File)
+			res, err = sconn.SshExec("md5sum " + plain.Dir + "/" + plain.File)
 			if err != nil {
 				d.log.Error("Execute md5sum %s in %s failed", plain.File, ip)
 				d.reportResult(plain, ip, "Md5sum failed")
 				return
 			}
 
-			//TODO: check md5
+			/* check md5 */
 			tmp := strings.Fields(res)
-			if !strings.EqualFold(tmp[0], plain.Md5) {
+			if !strings.EqualFold(tmp[0], plain.Localfile_md5) {
 				d.log.Error("Check md5 failed")
 				d.reportResult(plain, ip, "Check md5 failed")
 				return
 			}
 
 			/* postscript */
-			res, err := sconn.SshExec(plain.Postscript)
+			res, err = sconn.SshExec(plain.Postscript)
 			if err != nil {
 				d.log.Error("Execute %s in %s failed", plain.Postscript, ip)
 				d.reportResult(plain, ip, "Execute postscript failed")

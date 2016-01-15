@@ -4,7 +4,7 @@ type Message struct {
 	/* orgin message struct */
 	Ips				[]string
 	Host			string
-	Flowid			int64
+	Flowid			string
 	Taskruntime		string
 	Batinterval		string
 	File			string
@@ -13,6 +13,9 @@ type Message struct {
 	Dir				string
 	Webfile			string
 	Rights			string
+	Sid				string
+	Localfile_md5	string
+	Postscript		string
 
 	/* dealed message struct */
 	right			string

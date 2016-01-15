@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"errors"
 	"net/http"
+	"net/url"
 	"io/ioutil"
 )
 
@@ -22,8 +23,8 @@ func InitHttpClient(log *Log) *HttpClient {
 	return hc
 }
 
-func (hc *HttpClient) Getfile(uri string) ([]byte, error) {
-    resp, err := http.Get(uri)
+func (hc *HttpClient) GetFile(uri string, file string) ([]byte, error) {
+    resp, err := http.Get(url.QueryUnescape(uri) + file)
     if err != nil {
 		hc.log.Error("Http get %s failed", uri)
         return nil, err
@@ -42,14 +43,16 @@ func (hc *HttpClient) Getfile(uri string) ([]byte, error) {
 		return nil, errors.New("Content length error")
 	}
 
-	reurn body, nil
+	return body, nil
 }
 
 func (hc *HttpClient) Report(uri string, fid string, sid string, time string, ip string, msg string) error {
 	if len(msg) {	/* error, status is 2 */
-		uri = fmt.Sprintf(template, uri, fid, sid, "cmd", "2", time, ip, msg)
+		uri = fmt.Sprintf(template, url.QueryUnescape(uri), fid, sid, "cmd", "2",
+				QueryEscape(time), QueryEscape(ip), QueryEscape(msg))
 	} else {		/* ok, status is 1 */
-		uri = fmt.Sprintf(template, uri, fid, sid, "cmd", "1", time, ip, msg)
+		uri = fmt.Sprintf(template, url.QueryUnescape(uri), fid, sid, "cmd", "1",
+				QueryEscape(time), QueryEscape(ip), QueryEscape(msg))
 	}
 
     resp, err := http.Get(uri)
