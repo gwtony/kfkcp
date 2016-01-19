@@ -2,6 +2,7 @@ package kfkc
 
 import (
 	"fmt"
+	"strconv"
 	"errors"
 	"net/http"
 	"net/url"
@@ -14,7 +15,7 @@ type HttpClient struct {
 
 var HTTP_OK = 200
 
-var template = "%s?flow_id=%s&sid=%s&cmd=%s&status=%s&time=%s&ip=%s&content=%s"
+var template = "%s?flow_id=%d&sid=0&cmd=%s&status=%s&time=%s&ip=%s&content=%s"
 
 
 func InitHttpClient(log *Log) *HttpClient {
@@ -24,9 +25,15 @@ func InitHttpClient(log *Log) *HttpClient {
 }
 
 func (hc *HttpClient) GetFile(uri string, file string) ([]byte, error) {
-    resp, err := http.Get(url.QueryUnescape(uri) + file)
+	ueuri, err := url.QueryUnescape(uri)
+	if err != nil {
+		hc.log.Error("Unescape uri failed")
+		return nil, err
+	}
+
+    resp, err := http.Get(ueuri + "/" + file)
     if err != nil {
-		hc.log.Error("Http get %s failed", uri)
+		hc.log.Error("Http get %s failed", ueuri + "/" + file)
         return nil, err
     }
 
@@ -38,23 +45,32 @@ func (hc *HttpClient) GetFile(uri string, file string) ([]byte, error) {
     }
 
     clen := resp.Header.Get("Content-Length")
-	if len(body) != clen {
-		hc.log.Error("Content length error")
-		return nil, errors.New("Content length error")
+	if clen != "" {
+		if cl, _ := strconv.Atoi(clen); len(body) != cl {
+			hc.log.Error("Content length error")
+			return nil, errors.New("Content length error")
+		}
 	}
 
 	return body, nil
 }
 
-func (hc *HttpClient) Report(uri string, fid string, sid string, time string, ip string, msg string) error {
-	if len(msg) {	/* error, status is 2 */
-		uri = fmt.Sprintf(template, url.QueryUnescape(uri), fid, sid, "cmd", "2",
-				QueryEscape(time), QueryEscape(ip), QueryEscape(msg))
-	} else {		/* ok, status is 1 */
-		uri = fmt.Sprintf(template, url.QueryUnescape(uri), fid, sid, "cmd", "1",
-				QueryEscape(time), QueryEscape(ip), QueryEscape(msg))
+func (hc *HttpClient) Report(uri string, fid int, time string, ip string, msg string) error {
+	ueuri, err := url.QueryUnescape(uri)
+	if err != nil {
+		hc.log.Error("Unescape uri failed")
+		return err
 	}
 
+	if msg != "" {	/* error, status is 2 */
+		uri = fmt.Sprintf(template, ueuri, fid, "cmd", "2",
+				url.QueryEscape(time), url.QueryEscape(ip), url.QueryEscape(msg))
+	} else {		/* ok, status is 1 */
+		uri = fmt.Sprintf(template, ueuri, fid, "cmd", "1",
+				url.QueryEscape(time), url.QueryEscape(ip), url.QueryEscape(msg))
+	}
+
+	hc.log.Debug("Http get request to %s", uri)
     resp, err := http.Get(uri)
     if err != nil {
 		hc.log.Error("Report get uri %s failed", uri)
@@ -63,16 +79,12 @@ func (hc *HttpClient) Report(uri string, fid string, sid string, time string, ip
 
     defer resp.Body.Close()
 
-    body, err := ioutil.ReadAll(resp.Body)
-    if err != nil {
-		hc.log.Error("Report read body failed")
-        return err
-    }
-
-	if body.StatusCode != HTTP_OK {
-		hc.log.Error("http status error: %d", body.StatusCode)
-        return errors.New(body.Status)
+	if resp.StatusCode != HTTP_OK {
+		hc.log.Error("Http status error: %d", resp.StatusCode)
+        return errors.New(resp.Status)
 	}
+
+	hc.log.Debug("Http status is %d", resp.StatusCode)
 
 	return nil
 }

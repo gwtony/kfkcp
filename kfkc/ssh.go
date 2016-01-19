@@ -8,6 +8,7 @@ import (
 	//"io"
 	"time"
 	"sync"
+	"fmt"
 )
 
 var DefaultTimeout = 5 * time.Second
@@ -61,7 +62,7 @@ func InitSshContext(path string, user string, timeout time.Duration, log *Log) (
 func (sc *SshContext) InitSshConn(addr string, log *Log) (*SshConn, error) {
 	sconn := &SshConn{}
 	sconn.addr = addr
-	err := sconn.sshConnect(sc, addr, log)
+	err := sconn.SshConnect(sc, addr, log)
 	if err != nil {
 		log.Error("Init ssh connection to %s failed", addr)
 		return nil, err

@@ -11,17 +11,17 @@ const DEFAULT_CONF			= "kfkc.conf"
 const DEFAULT_SSH_TIMEOUT	= 5
 
 type Config struct {
-	log		string		/* log file */
-	level	string		/* log level */
+	log		string	/* log file */
+	level	string	/* log level */
 
-	topic	string		/* topic */
+	topic	string	/* topic */
 
-	kaddr	string		/* kafka addr */
+	kaddr	string	/* kafka addr */
 
-	sport	string		/* ssh port */
-	suser	string		/* ssh user */
-	skey	string		/* ssh key */
-	sto		int64		/* ssh timeout */
+	sport	string	/* ssh port */
+	suser	string	/* ssh user */
+	skey	string	/* ssh key */
+	sto		int64	/* ssh timeout */
 }
 
 func (conf *Config) ReadConf(file string) (*Config, error) {

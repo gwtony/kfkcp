@@ -4,7 +4,7 @@ type Message struct {
 	/* orgin message struct */
 	Ips				[]string
 	Host			string
-	Flowid			string
+	Flowid			int
 	Taskruntime		string
 	Batinterval		string
 	File			string

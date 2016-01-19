@@ -44,7 +44,7 @@ func (k *KafkaClient) initKafkaProducer(broker string) error {
     config.Producer.Retry.Max = 3                    // Retry up to 10 times to produce the message
 
 	brokerList := []string {broker}
-	k.log.Debug("call new sync producer: ")
+	k.log.Debug("Call new sync producer: ")
 
     producer, err := sarama.NewSyncProducer(brokerList, config)
     if err != nil {
@@ -62,6 +62,7 @@ func (k *KafkaClient) initKafkaConsumer(broker string) error {
 	config.Consumer.Return.Errors = true
 
 	brokerList := []string {broker}
+	k.log.Debug(brokerList)
     consumer, err := sarama.NewConsumer(brokerList, config)
     if err != nil {
         k.log.Error("Failed to start consumer:")
@@ -76,14 +77,14 @@ func (k *KafkaClient) initKafkaConsumer(broker string) error {
 }
 
 func (k *KafkaClient) sendData(topic string, msg string) error {
-	k.log.Debug("[sendData] topic: %s, msg: %s", topic, msg)
+	k.log.Debug("SendData topic: %s, msg: %s", topic, msg)
 
 	_, _, err := k.producer.SendMessage(&sarama.ProducerMessage{
 		Topic: topic,
 		Value: sarama.StringEncoder(msg),
 	})
 
-	k.log.Debug("send data to kafka done")
+	k.log.Debug("Send data to kafka done")
 	if err != nil {
 		k.log.Error("Kafka client send message failed", err)
 		return err
@@ -104,7 +105,7 @@ func (k *KafkaClient) recvMsg(topic string, offset int64) error {
 
     msgCount := 0
 
-	deployer := InitDeploy(k.s.sc, k.log)
+	deployer, _ := InitDeploy(k.s.sc, k.log)
 
 	for {
 	    select {
@@ -112,8 +113,8 @@ func (k *KafkaClient) recvMsg(topic string, offset int64) error {
 	        k.log.Error(err)
 	    case msg := <-consumer.Messages():
 	        msgCount++
-			k.log.Debug("msg count is %d", msgCount)
-			k.log.Debug("Msg is [%s], Offset is %d", string(msg.Value), msg.Offset)
+			k.log.Debug("Msg count is %d", msgCount)
+			k.log.Debug("Msg is %s, Offset is %d", string(msg.Value), msg.Offset)
 
 			deployer.RunDeploy(msg.Value)
 

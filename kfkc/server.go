@@ -1,6 +1,7 @@
 package kfkc
 
 import (
+	"time"
 	"net/http"
 )
 
@@ -12,7 +13,7 @@ type Server struct {
 	sport	string
 	suser	string
 	skey	string
-	sto		int64
+	sto		time.Duration
 
 	log		*Log
 	kafka	*KafkaClient
@@ -24,7 +25,7 @@ type Server struct {
 func (s *Server) pubMsg(w http.ResponseWriter, req *http.Request) {
 	err := req.ParseForm()
 	if err != nil {
-		s.log.Error("parse form failed", err)
+		s.log.Error("Parse form failed", err)
 		return
 	}
 
@@ -34,14 +35,14 @@ func (s *Server) pubMsg(w http.ResponseWriter, req *http.Request) {
 
 	tslice := req.PostForm["topic"]
 	if tslice == nil {
-		s.log.Error("no topic in post data")
+		s.log.Error("No topic in post data")
 		return
 	}
 	topic := tslice[0]
 
 	mslice := req.PostForm["msg"]
 	if mslice == nil {
-		s.log.Error("no msg in post data")
+		s.log.Error("No msg in post data")
 		return
 	}
 	msg := mslice[0]
@@ -58,13 +59,18 @@ func InitServer(conf *Config, log *Log) (*Server, error) {
 	s.sport = conf.sport
 	s.suser = conf.suser
 	s.skey  = conf.skey
-	s.sto	= conf.sto
+	s.sto	= time.Duration(conf.sto) * time.Second
 
-	s.sc = InitSshContext(s.skey, s.user, s.to, log)
+	sc, err := InitSshContext(s.skey, s.suser, s.sto, log)
+	if err != nil {
+		s.log.Error("Init ssh context failed")
+		return nil, err
+	}
+	s.sc = sc
 
 	kafka, err := InitKafka(s.kaddr, false, s.log)
 	if err != nil {
-		s.log.Error("init kafka client faild")
+		s.log.Error("Init kafka client faild")
 		return nil, err
 	}
 	kafka.s = s
@@ -74,7 +80,7 @@ func InitServer(conf *Config, log *Log) (*Server, error) {
 }
 
 func (s *Server) CoreRun() error {
-	s.kafka.recvMsg("ssh", -1)
+	s.kafka.recvMsg("ssh2", -1)
 	return nil
 }
 

@@ -3,6 +3,7 @@ package kfkp
 import (
 	//"reflect"
 	"net/http"
+	"encoding/json"
 )
 
 type Server struct {
@@ -14,34 +15,54 @@ type Server struct {
 }
 
 func (s *Server) pubMsg(w http.ResponseWriter, req *http.Request) {
-	//w.Header().Set("Content-Type", "application/json")
-	//w.Write([]byte("hello, world!\n"))
+	m := &Message{}
+	m.Reason = ""
+	m.Retcode = 1
+
+	defer func() {
+		ret, _ := json.Marshal(m)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(ret)
+	}()
+
+	s.log.Debug("in pub msg")
+
 	err := req.ParseForm()
 	if err != nil {
-		s.log.Error("parse form failed", err)
+		s.log.Error("Parse form failed", err)
+		m.Reason = "Parse form failed"
 		return
 	}
 
-	//s.log.Debug(reflect.TypeOf(req.PostForm["id"]))
 	for k, v := range req.PostForm {
 		s.log.Debug("%s %s", k, v)
 	}
 
 	tslice := req.PostForm["topic"]
 	if tslice == nil {
-		s.log.Error("no topic in post data")
+		s.log.Error("No topic in post data")
+		m.Reason = "No topic in post data"
 		return
 	}
+
 	topic := tslice[0]
 
 	mslice := req.PostForm["msg"]
 	if mslice == nil {
-		s.log.Error("no msg in post data")
+		s.log.Error("No msg in post data")
+		m.Reason = "No msg in post data"
 		return
 	}
 	msg := mslice[0]
 
-	s.kafka.sendData(topic, msg)
+	err = s.kafka.sendData(topic, msg)
+	if err != nil {
+		s.log.Error("Send data to kafka failed")
+		m.Reason = "Send data to kafka failed"
+		return
+	}
+
+	m.Retcode = 0
 }
 
 func InitServer(conf *Config, log *Log) (*Server, error) {
@@ -52,7 +73,7 @@ func InitServer(conf *Config, log *Log) (*Server, error) {
 	s.kport = conf.kport
 	kafka, err := InitKafka(s.kaddr, s.kport, s.log)
 	if err != nil {
-		s.log.Error("init kafka client faild")
+		s.log.Error("Init kafka client faild")
 		return nil, err
 	}
 	s.kafka = kafka
@@ -61,7 +82,7 @@ func InitServer(conf *Config, log *Log) (*Server, error) {
 }
 
 func (s *Server) CoreRun() error {
-	http.HandleFunc("/", s.pubMsg)
+	http.HandleFunc("/pub/", s.pubMsg)
 	err := http.ListenAndServe(":" + s.lport, nil)
 	if err != nil {
 		s.log.Error("ListenAndServe: ", err)

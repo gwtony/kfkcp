@@ -13,6 +13,8 @@ func Run() {
         return
     }
 
+	fmt.Println(conf.log, conf.level)
+
     log := GetLogger(conf.log, conf.level)
 
     server, err := InitServer(conf, log)

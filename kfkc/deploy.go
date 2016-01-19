@@ -2,6 +2,7 @@ package kfkc
 
 import (
 	"strings"
+	"errors"
 	//"fmt"
 )
 
@@ -31,17 +32,27 @@ func (d *Deploy) clear() {
 func (d *Deploy) parse(msg []byte) (*Message, error) {
 	d.clear()
 
-	raw, err := d.format.DecodeBase64(msg)
+	dmsg := strings.Split(string(msg), "\"")
+	if len(dmsg) < 3 {
+		d.log.Error("Message format error, len is %d", len(dmsg))
+		return nil, errors.New("Message format error")
+	}
+
+	d.log.Debug("Splited msg is %s", dmsg[1])
+
+	raw, err := d.format.DecodeBase64([]byte(dmsg[1]))
 
 	if err != nil {
 		d.log.Error("Decode base64 failed")
 		return nil, err
 	}
+	d.log.Debug("After base64 data is %s", string(raw))
 
 	plainMsg := &Message{}
 	err = d.format.DecodeJson(raw, &plainMsg)
 	if err != nil {
 		d.log.Error("Decode json failed")
+		d.log.Error(plainMsg)
 		return nil, err
 	}
 
@@ -55,7 +66,7 @@ func (d *Deploy) parse(msg []byte) (*Message, error) {
 }
 
 func (d *Deploy) reportResult(m *Message, ip string, errMsg string) error {
-	return d.hc.Report(m.Loguri, m.Flowid, m.Sid, m.Taskruntime, ip, errMsg)
+	return d.hc.Report(m.Loguri, m.Flowid, m.Taskruntime, ip, errMsg)
 }
 
 func InitDeploy(sc *SshContext, log *Log) (*Deploy, error) {
@@ -72,7 +83,6 @@ func (d *Deploy) RunDeploy(msg []byte) error {
 	plain, err := d.parse(msg)
 	if err != nil {
 		d.log.Error("Parse kafka message failed")
-		d.reportResult(plain, "", "Parse kafka message failed")
 		return err
 	}
 
@@ -96,50 +106,63 @@ func (d *Deploy) RunDeploy(msg []byte) error {
 		d.log.Debug("Deploy ip: %s", host)
 
 		go func(ip string) {
-			sconn := d.sc.InitSshConn(ip)
-
 			defer func () { ch <- 1 }()
-			defer sconn.SshClose()
 
-			/* mkdir */
-			res, err := sconn.SshExec("mkdir " + plain.Dir)
+			sconn, err := d.sc.InitSshConn(ip, d.log)
 			if err != nil {
-				d.log.Error("Execute mkdir %s in %s failed", plain.Dir, ip)
-				d.reportResult(plain, ip, "mkdir failed")
+				d.log.Error("Init ssh connection failed")
+				d.reportResult(plain, ip, "Connect failed")
 				return
 			}
 
+			defer sconn.SshClose()
+
+			/* mkdir */
+			_, err = sconn.SshExec("mkdir " + plain.Dir)
+			if err != nil {
+				/* maybe dir is exist */
+				d.log.Info("Execute mkdir %s in %s failed, continue", plain.Dir, ip)
+			}
+
 			/* scp */
-			err = sconn.sshScp(data, plain.File, plain.Dir, plain.right)
+			err = sconn.SshScp(data, plain.File, plain.Dir, plain.right)
 			if err != nil {
 				d.log.Error("Scp file %s to %s failed", plain.File, ip)
 				d.reportResult(plain, ip, "Scp file failed")
 				return
 			}
+			d.log.Debug("Scp %s to %s done", plain.File, ip)
 
-			/* md5sum */
-			res, err = sconn.SshExec("md5sum " + plain.Dir + "/" + plain.File)
-			if err != nil {
-				d.log.Error("Execute md5sum %s in %s failed", plain.File, ip)
-				d.reportResult(plain, ip, "Md5sum failed")
-				return
-			}
+			/* Md5 check not used */
+			///* md5sum */
+			//res, err = sconn.SshExec("md5sum " + plain.Dir + "/" + plain.File)
+			//if err != nil {
+			//	d.log.Error("Execute md5sum %s in %s failed", plain.File, ip)
+			//	d.reportResult(plain, ip, "Md5sum failed")
+			//	return
+			//}
 
-			/* check md5 */
-			tmp := strings.Fields(res)
-			if !strings.EqualFold(tmp[0], plain.Localfile_md5) {
-				d.log.Error("Check md5 failed")
-				d.reportResult(plain, ip, "Check md5 failed")
-				return
-			}
+			///* check md5 */
+			//tmp := strings.Fields(string(res))
+			//if !strings.EqualFold(tmp[0], plain.Localfile_md5) {
+			//	d.log.Error("Check md5 failed")
+			//	d.reportResult(plain, ip, "Check md5 failed")
+			//	return
+			//}
 
 			/* postscript */
-			res, err = sconn.SshExec(plain.Postscript)
-			if err != nil {
-				d.log.Error("Execute %s in %s failed", plain.Postscript, ip)
-				d.reportResult(plain, ip, "Execute postscript failed")
-				return
+			if plain.Postscript != "" {
+				_, err = sconn.SshExec(plain.Postscript)
+				if err != nil {
+					d.log.Error("Execute %s in %s failed", plain.Postscript, ip)
+					d.reportResult(plain, ip, "Execute postscript failed")
+					return
+				}
 			}
+
+			/* report success */
+			d.reportResult(plain, ip, "")
+			d.log.Debug("deploy %s done", ip)
 		}(host)
 	}
 
