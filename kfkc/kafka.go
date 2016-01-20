@@ -98,9 +98,11 @@ func (k *KafkaClient) recvMsg(topic string, offset int64) error {
 		offset = sarama.OffsetNewest
 	}
 
+	k.log.Debug("Receive message: topic is %s, offset is %d", topic, offset)
     consumer, err := k.consumer.ConsumePartition(topic, 0, offset)
     if err != nil {
-        panic(err)
+		k.log.Error(err)
+		return nil
     }
 
     msgCount := 0
@@ -125,19 +127,6 @@ func (k *KafkaClient) recvMsg(topic string, offset int64) error {
     k.log.Debug("Processed", msgCount, "messages")
 
 	return nil
-}
-
-func (k *KafkaClient) getTopics() ([]string, error) {
-	k.log.Debug("in get topics")
-	topics, err := k.consumer.Topics()
-	if err != nil {
-		k.log.Error("get topic failed", err)
-		return nil, err
-	}
-	k.log.Debug("topic is")
-	k.log.Debug(topics)
-
-	return topics, nil
 }
 
 //TODO:
