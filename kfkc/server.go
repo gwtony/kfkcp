@@ -2,6 +2,7 @@ package kfkc
 
 import (
 	"time"
+	"strings"
 	"net/http"
 )
 
@@ -17,7 +18,7 @@ type Server struct {
 
 	log		*Log
 	kafka	*KafkaClient
-	topic	string
+	topics	[]string
 
 	sc		*SshContext
 }
@@ -47,7 +48,7 @@ func (s *Server) pubMsg(w http.ResponseWriter, req *http.Request) {
 	}
 	msg := mslice[0]
 
-	s.kafka.sendData(topic, msg)
+	s.kafka.SendData(topic, msg)
 }
 
 func InitServer(conf *Config, log *Log) (*Server, error) {
@@ -55,7 +56,7 @@ func InitServer(conf *Config, log *Log) (*Server, error) {
 
 	s.log = log
 	s.kaddr = conf.kaddr
-	s.topic = conf.topic
+	s.topics = strings.Split(conf.topic, ",")
 	s.sport = conf.sport
 	s.suser = conf.suser
 	s.skey  = conf.skey
@@ -79,8 +80,35 @@ func InitServer(conf *Config, log *Log) (*Server, error) {
 	return s, nil
 }
 
+func (s *Server) RecvMsg(topic string, ch chan int) {
+	s.log.Debug("RecvMsg topic is %s", topic)
+
+	s.kafka.RecvMsg(topic, -1, ch)
+}
+
 func (s *Server) CoreRun() error {
-	s.kafka.recvMsg("ssh2", -1)
+	tlen := len(s.topics)
+
+	ch := make(chan int, tlen)
+
+	defer close(ch)
+
+	for _, v := range s.topics {
+		go s.RecvMsg(v, ch)
+	}
+
+	for {
+		select {
+		case <-ch :
+			s.log.Debug("Got message from channel")
+			tlen--
+			if tlen == 0 {
+				s.log.Debug("CoreRun return")
+				return nil
+			}
+		}
+	}
+
 	return nil
 }
 

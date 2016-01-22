@@ -76,7 +76,7 @@ func (k *KafkaClient) initKafkaConsumer(broker string) error {
 	return nil
 }
 
-func (k *KafkaClient) sendData(topic string, msg string) error {
+func (k *KafkaClient) SendData(topic string, msg string) error {
 	k.log.Debug("SendData topic: %s, msg: %s", topic, msg)
 
 	_, _, err := k.producer.SendMessage(&sarama.ProducerMessage{
@@ -93,7 +93,10 @@ func (k *KafkaClient) sendData(topic string, msg string) error {
 	return nil
 }
 
-func (k *KafkaClient) recvMsg(topic string, offset int64) error {
+func (k *KafkaClient) RecvMsg(topic string, offset int64, ch chan int) error {
+
+	defer func() { ch<-1 }()
+
 	if offset < 0 {
 		offset = sarama.OffsetNewest
 	}
@@ -102,7 +105,7 @@ func (k *KafkaClient) recvMsg(topic string, offset int64) error {
     consumer, err := k.consumer.ConsumePartition(topic, 0, offset)
     if err != nil {
 		k.log.Error(err)
-		return nil
+		return err
     }
 
     msgCount := 0

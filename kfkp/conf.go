@@ -15,7 +15,6 @@ type Config struct {
 	//timeout time.Duration
 	lport	string		/* listen port */
 	kaddr	string		/* kafka addr */
-	kport	string		/* kafka port */
 }
 
 func (conf *Config) ReadConf(file string) (*Config, error) {
@@ -35,7 +34,6 @@ func (conf *Config) ReadConf(file string) (*Config, error) {
 	//conf.timeout		= time.Duration(timeout) * time.Millisecond
 	conf.lport, _		= c.GetString("default", "listen_port")
 	conf.kaddr, _		= c.GetString("default", "kafka_addr")
-	conf.kport, _		= c.GetString("default", "kafka_port")
 
 	return conf, nil
 }

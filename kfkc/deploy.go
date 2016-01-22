@@ -117,6 +117,16 @@ func (d *Deploy) RunDeploy(msg []byte) error {
 
 			defer sconn.SshClose()
 
+			/* precheck */
+			if plain.Precheck != "" {
+				_, err = sconn.SshExec(plain.Precheck)
+				if err != nil {
+					d.log.Error("Execute precheck %s in %s failed", plain.Precheck, ip)
+					d.reportResult(plain, ip, "Execute precheck failed")
+					return
+				}
+			}
+
 			/* mkdir */
 			_, err = sconn.SshExec("mkdir " + plain.Dir)
 			if err != nil {
@@ -154,7 +164,7 @@ func (d *Deploy) RunDeploy(msg []byte) error {
 			if plain.Postscript != "" {
 				_, err = sconn.SshExec(plain.Postscript)
 				if err != nil {
-					d.log.Error("Execute %s in %s failed", plain.Postscript, ip)
+					d.log.Error("Execute postscript %s in %s failed", plain.Postscript, ip)
 					d.reportResult(plain, ip, "Execute postscript failed")
 					return
 				}

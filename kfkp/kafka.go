@@ -6,22 +6,34 @@ import (
 
 type KafkaClient struct {
 	addr		string
-	port		string
 	log			*Log
 	producer	sarama.SyncProducer
+	consumer	sarama.Consumer
+
+	/* TODO: should use interface */
+	s			*Server
 }
 
-func InitKafka(addr string, port string, log *Log) (*KafkaClient, error) {
+func InitKafka(addr string, flag bool, log *Log) (*KafkaClient, error) {
 	kfk := &KafkaClient{}
+
 	kfk.addr = addr
-	kfk.port = port
 	kfk.log = log
-	err := kfk.initKafkaProducer(addr + ":" + port)
-	if err != nil {
-		kfk.log.Error("Init kafka producer failed")
-		return nil, err
+
+	if flag {
+		err := kfk.initKafkaProducer(addr)
+		 if err != nil {
+			 kfk.log.Error("Init kafka producer failed")
+			 return nil, err
+		 }
+	} else {
+		err := kfk.initKafkaConsumer(addr)
+		 if err != nil {
+			 kfk.log.Error("Init kafka consumer failed")
+			 return nil, err
+		 }
 	}
-	//kconsumer := kfk.initKafkaConsumer(addr + ":" + port)
+	//TODO: producer & consumer to be closed
 
 	return kfk, nil
 }
@@ -32,8 +44,7 @@ func (k *KafkaClient) initKafkaProducer(broker string) error {
     config.Producer.Retry.Max = 3                    // Retry up to 10 times to produce the message
 
 	brokerList := []string {broker}
-	k.log.Debug("call new sync producer: ")
-	k.log.Debug(brokerList, config)
+	k.log.Debug("Call new sync producer: ")
 
     producer, err := sarama.NewSyncProducer(brokerList, config)
     if err != nil {
@@ -46,16 +57,34 @@ func (k *KafkaClient) initKafkaProducer(broker string) error {
 	return nil
 }
 
-func (k *KafkaClient) sendData(topic string, msg string) error {
-	k.log.Debug("[sendData] topic: %s, msg: %s", topic, msg)
+func (k *KafkaClient) initKafkaConsumer(broker string) error {
+    config := sarama.NewConfig()
+	config.Consumer.Return.Errors = true
 
-	//partition, offset, err := k.producer.SendMessage(&sarama.ProducerMessage{
+	brokerList := []string {broker}
+	k.log.Debug(brokerList)
+    consumer, err := sarama.NewConsumer(brokerList, config)
+    if err != nil {
+        k.log.Error("Failed to start consumer:")
+		k.log.Error(err)
+		return err
+    }
+
+	k.log.Debug("Create new consumer done")
+    k.consumer = consumer
+
+	return nil
+}
+
+func (k *KafkaClient) SendData(topic string, msg string) error {
+	k.log.Debug("SendData topic: %s, msg: %s", topic, msg)
+
 	_, _, err := k.producer.SendMessage(&sarama.ProducerMessage{
 		Topic: topic,
 		Value: sarama.StringEncoder(msg),
 	})
 
-	k.log.Debug("send data to kafka done")
+	k.log.Debug("Send data to kafka done")
 	if err != nil {
 		k.log.Error("Kafka client send message failed", err)
 		return err
@@ -63,3 +92,4 @@ func (k *KafkaClient) sendData(topic string, msg string) error {
 
 	return nil
 }
+

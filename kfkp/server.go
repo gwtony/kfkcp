@@ -9,7 +9,6 @@ import (
 type Server struct {
 	lport	string
 	kaddr	string
-	kport	string
 	log		*Log
 	kafka	*KafkaClient
 }
@@ -55,7 +54,7 @@ func (s *Server) pubMsg(w http.ResponseWriter, req *http.Request) {
 	}
 	msg := mslice[0]
 
-	err = s.kafka.sendData(topic, msg)
+	err = s.kafka.SendData(topic, msg)
 	if err != nil {
 		s.log.Error("Send data to kafka failed")
 		m.Reason = "Send data to kafka failed"
@@ -70,8 +69,7 @@ func InitServer(conf *Config, log *Log) (*Server, error) {
 	s.log = log
 	s.lport = conf.lport
 	s.kaddr = conf.kaddr
-	s.kport = conf.kport
-	kafka, err := InitKafka(s.kaddr, s.kport, s.log)
+	kafka, err := InitKafka(s.kaddr, true, s.log)
 	if err != nil {
 		s.log.Error("Init kafka client faild")
 		return nil, err

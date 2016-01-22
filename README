@@ -1,0 +1,14 @@
+# kfkcp : http to ssh/scp service
+- It contains kfkc and kfkp
+
+### kfkc
+- Convert http post request to kafka produce request
+
+### kfkp
+- Consume message and execute ssh/scp on slave
+
+### Dependency
+- golang.org/x/crypto/ssh
+- code.google.com/p/log4go
+- github.com/Shopify/sarama
+- github.com/msbranco/goconfig

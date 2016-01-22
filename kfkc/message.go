@@ -15,6 +15,7 @@ type Message struct {
 	Rights			string
 	Sid				string
 	Localfile_md5	string
+	Precheck		string
 	Postscript		string
 
 	/* dealed message struct */
