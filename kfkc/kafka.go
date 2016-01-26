@@ -121,7 +121,7 @@ func (k *KafkaClient) RecvMsg(topic string, offset int64, ch chan int) error {
 			k.log.Debug("Msg count is %d", msgCount)
 			k.log.Debug("Msg is %s, Offset is %d", string(msg.Value), msg.Offset)
 
-			deployer.RunDeploy(msg.Value)
+			go deployer.RunDeploy(msg.Value)
 
 			//TODO: save offset
 	    }
