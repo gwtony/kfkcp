@@ -22,6 +22,8 @@ type Config struct {
 	suser	string	/* ssh user */
 	skey	string	/* ssh key */
 	sto		int64	/* ssh timeout */
+
+	daemon	bool	/* is daemon */
 }
 
 func (conf *Config) ReadConf(file string) (*Config, error) {
@@ -46,6 +48,7 @@ func (conf *Config) ReadConf(file string) (*Config, error) {
 	if err != nil {
 		conf.sto = DEFAULT_SSH_TIMEOUT
 	}
+	conf.daemon, _		= c.GetBool("default", "daemon")
 
 	return conf, nil
 }

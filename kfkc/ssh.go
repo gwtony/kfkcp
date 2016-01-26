@@ -56,6 +56,8 @@ func InitSshContext(path string, user string, timeout time.Duration, log *Log) (
 		Auth: []ssh.AuthMethod{authMethod},
 	}
 
+	sc.timeout = timeout
+
 	return sc, nil
 }
 
@@ -77,6 +79,13 @@ func (sconn *SshConn) SshConnect(sc *SshContext, addr string, log *Log) error {
 		log.Error("Create ssh connection to %s failed", addr)
 		return err
 	}
+
+	err = conn.SetDeadline(time.Now().Add(sc.timeout))
+	if err != nil {
+		log.Error("Set deadline failed")
+		return err
+	}
+
 	sshConn, chans, reqs, err := ssh.NewClientConn(conn, addr, sc.config)
 	if err != nil {
 		return err
